@@ -1,0 +1,31 @@
+sequenceDiagram
+    participant Admin as System Admin
+    participant Docker as Docker CLI
+    participant Container as ChromaDB Container
+    participant Volume as Persistent Volume
+    participant Network as Bridge Network
+
+    Admin->>Docker: docker-compose up -d
+    Docker->>Container: Create container from image
+    Docker->>Volume: Create/mount chroma_data volume
+    Docker->>Network: Create bridge network
+
+    Container->>Container: Initialize with env vars
+    Container->>Volume: Mount /chroma/chroma
+    Container-->>Docker: Container started on port 8000
+
+    Docker-->>Admin: ✅ ChromaDB running at localhost:8000
+
+    Note over Container,Network: Runtime — serves VectorStore requests
+    loop Continuous operation
+        Network->>Container: ChromaClient JS SDK calls
+        Container->>Volume: Read/write persistent data
+        Container->>Container: Process vector operations (HNSW index)
+        Container-->>Network: Responses (collections, query results)
+    end
+
+    Admin->>Docker: docker-compose down
+    Docker->>Container: Stop container
+    Container->>Volume: Flush pending writes
+    Container-->>Docker: Container stopped
+    Docker-->>Admin: ✅ ChromaDB stopped (data persisted in volume)

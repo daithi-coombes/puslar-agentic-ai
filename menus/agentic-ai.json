@@ -1,0 +1,26 @@
+{
+  "context-menu": {
+    "atom-text-editor": [
+      {
+        "label": "Toggle agentic-ai",
+        "command": "agentic-ai:toggle"
+      }
+    ]
+  },
+  "menu": [
+    {
+      "label": "Packages",
+      "submenu": [
+        {
+          "label": "agentic-ai",
+          "submenu": [
+            {
+              "label": "Toggle",
+              "command": "agentic-ai:toggle"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

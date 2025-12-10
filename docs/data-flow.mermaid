@@ -1,0 +1,31 @@
+flowchart TD
+    A[Source Code Files] --> B[Treesitter Chunker]
+    B --> C[AST-aware Chunks<br/>functions / classes / methods]
+    C --> D{Embedding Provider}
+    D -->|Ollama| E1[Ollama API]
+    D -->|Transformers| E2[HuggingFace Transformers]
+    E1 --> F[N-dim Vectors<br/>dimensions per model]
+    E2 --> F
+    F --> G[Embeddings JSON<br/>Disk Cache]
+
+    G --> H[VectorStore.ingest]
+    H --> I[ChromaDB Collection<br/>Vectors + Metadata]
+
+    J[User Query] --> K[Query Embedding<br/>same provider/model]
+    K --> L{Hybrid Search}
+    I --> L
+    L --> L1[Exact Match<br/>identifiers]
+    L --> L2[Semantic Search<br/>vector similarity]
+    L --> L3[Keyword Search<br/>token matching]
+    L1 --> M[Fusion & Ranking<br/>weighted scores]
+    L2 --> M
+    L3 --> M
+    M --> N[SearchResult<br/>ranked + grouped by file]
+    N --> O[User Selects Context]
+    O --> P[LLM via OllamaClient]
+    P --> Q[Generated Response]
+
+    style A fill:#cff,color:#333
+    style J fill:#fcf,color:#333
+    style Q fill:#cfc,color:#333
+    style M fill:#ffd,color:#333

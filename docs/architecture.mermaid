@@ -1,0 +1,53 @@
+graph TB
+    subgraph "Pulsar Plugin — agentic-ai"
+        A[AgenticAiView<br/>4-step UI] --> B[ContextManager<br/>Orchestrator]
+        B --> C[ConfigManager<br/>Settings + JSON registry]
+        A --> D[OllamaClient<br/>LLM responses]
+    end
+
+    subgraph "ESM Module — rag-codebase-indexer"
+        E[Indexer<br/>scan → chunk → embed → cache]
+        F[VectorStore<br/>ingest + hybrid search]
+
+        subgraph "Chunkers"
+            G[Chunker base]
+            H[Treesitter]
+        end
+
+        subgraph "Embedders"
+            I[Embedder base]
+            J[Ollama]
+            K[Transformers]
+        end
+
+        E --> G
+        E --> I
+        F --> I
+    end
+
+    subgraph "Storage"
+        L[Embeddings JSON<br/>Disk Cache]
+        M[ChromaDB Container<br/>Vector Database]
+    end
+
+    subgraph "Infrastructure"
+        N[Docker Runtime]
+        O[Local Filesystem]
+    end
+
+    B --> E
+    B --> F
+    E --> L
+    F --> M
+    F --> L
+    M --> N
+    L --> O
+
+    style A fill:#c9f,stroke:#333,color:#222
+    style B fill:#9cf,stroke:#333,color:#222
+    style E fill:#9fc,stroke:#333,color:#222
+    style F fill:#fc9,stroke:#333,color:#222
+    style M fill:#f99,stroke:#333,color:#222
+    style J fill:#ccf,stroke:#333,color:#222
+    style K fill:#ccf,stroke:#333,color:#222
+    style H fill:#ffc,stroke:#333,color:#222

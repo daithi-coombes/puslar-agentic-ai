@@ -1,0 +1,27 @@
+[
+  {
+    "id": "explain",
+    "label": "Explain this code",
+    "text": "Explain what this code does, step by step."
+  },
+  {
+    "id": "refactor",
+    "label": "Suggest refactors",
+    "text": "Suggest refactoring improvements for this code."
+  },
+  {
+    "id": "bugs",
+    "label": "Find bugs",
+    "text": "Identify any bugs or potential issues in this code."
+  },
+  {
+    "id": "tests",
+    "label": "Write tests",
+    "text": "Write unit tests for this code."
+  },
+  {
+    "id": "document",
+    "label": "Add JSDoc comments",
+    "text": "Add JSDoc documentation comments to this code."
+  }
+]

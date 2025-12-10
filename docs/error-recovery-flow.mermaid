@@ -1,0 +1,78 @@
+sequenceDiagram
+    participant View as AgenticAiView
+    participant CM as ContextManager
+    participant Idx as Indexer
+    participant Emb as Embedder
+    participant Store as VectorStore
+    participant Coll as ChromaDB Collection
+
+    View->>CM: indexCurrentProject()
+
+    Note over Idx: Error type: File too large
+    alt File exceeds maxFileSize during scan
+        Idx->>Idx: emit('error', { phase: 'scan', recoverable: true })
+        Note over Idx: File skipped, pipeline continues
+    end
+
+    Note over Idx: Error type: Embedding failure
+    alt Single chunk embedding fails
+        Idx->>Emb: embed(text)
+        Emb--xIdx: Error (timeout, model issue)
+        Idx->>Idx: Record in failedIndices
+        Idx->>Idx: emit('error', { phase: 'embed', recoverable: true })
+        Note over Idx: Chunk skipped (NOT zero-filled)<br/>Array alignment preserved via index tracking
+        Idx->>Idx: Filter out failed embeddings before cache
+        Note over Idx: Pipeline continues with valid chunks
+    end
+
+    Note over Idx: Error type: Fatal model failure
+    alt Model fails to load / all embeddings fail
+        Idx--xCM: Promise rejects with Error
+        CM--xView: Error propagated
+        View->>View: Show error notification
+        View->>View: Reset button state (INDEX PROJECT)
+        View->>View: Progress label → ERROR
+    end
+
+    Note over View: View always cleans up in finally block
+    View->>Idx: removeListener('progress')
+    View->>Idx: removeListener('error')
+
+    Note over Store: Error type: Batch insert failure
+    alt Batch too large for ChromaDB
+        Store->>Coll: collection.add(batch of 200)
+        Coll--xStore: Error
+        Store->>Store: Halve batchSize (200 → 100)
+        Store->>Store: emit('error', { phase: 'ingest', recoverable: true })
+        Store->>Coll: Retry with batch of 100
+        alt Still fails
+            Store->>Store: Halve again (100 → 50)
+            Store->>Coll: Retry with batch of 50
+            alt Below minimum (50)
+                Store->>Store: emit('error', { recoverable: false })
+                Note over Store: Skip batch, continue with next
+            end
+        else Success
+            Coll-->>Store: Batch confirmed
+        end
+    end
+
+    Note over Store: Error type: ChromaDB connection failure
+    alt VectorStore.connect() fails
+        Store->>Store: ChromaClient constructor or getCollection fails
+        Store--xCM: Promise rejects with Error
+        CM--xView: Error propagated
+        View->>View: atom.notifications.addError('Failed to update database')
+    end
+
+    Note over View: Error type: LLM unreachable
+    alt OllamaClient.sendPrompt() fails
+        View->>View: Check error.message for diagnostics
+        alt ECONNREFUSED / not running
+            View->>View: addError('Ollama not reachable')<br/>hint: ollama serve
+        else Model issue
+            View->>View: addError('Model issue')<br/>hint: ollama pull <model>
+        else Other
+            View->>View: addError('Generation failed')
+        end
+    end

@@ -1,0 +1,788 @@
+// Agentic AI – Pulsar Plugin Styles
+// Compatible with Pulsar ≥ 1.131.0 (Electron 30 / Chromium 124)
+//
+// Uses Pulsar UI variables for theme compatibility.
+// Falls back to dark defaults for standalone testing.
+
+// ── Accent Colours ──────────────────────────────────────────
+
+@agentic-embed:   #6ee7b7;
+@agentic-llm:     #a78bfa;
+@agentic-chunker:  #f9a857;
+@agentic-db:       #5eadf2;
+@agentic-muted:    #555a6e;
+
+// ── Derived from Pulsar UI vars ─────────────────────────────
+
+@agentic-bg:          var(--color-bg-pane,        #0d0e12);
+@agentic-bg-card:     var(--color-bg-input,       #13151a);
+@agentic-bg-inset:    var(--color-bg-input-focus,  #0d0e12);
+@agentic-border:      var(--color-border,          #22252e);
+@agentic-fg:          var(--color-fg,              #e2e4ed);
+@agentic-fg-muted:    var(--color-fg-subtle,       #8b8fa3);
+@agentic-fg-dim:      var(--color-fg-faint,        #3d4155);
+@agentic-font-mono:   'JetBrains Mono', 'Fira Code', 'Menlo', 'Consolas', monospace;
+@agentic-font-sans:   'DM Sans', 'SF Pro Text', -apple-system, 'Segoe UI', sans-serif;
+
+// ── Root Container ──────────────────────────────────────────
+
+.agentic-ai {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: @agentic-bg;
+  color: @agentic-fg;
+  font-family: @agentic-font-mono;
+  font-size: 12px;
+  overflow-y: auto;
+  padding: 16px;
+  gap: 14px;
+  container-type: inline-size;
+  container-name: agentic-panel;
+
+  * { box-sizing: border-box; }
+}
+
+// ── Pipeline Overview ───────────────────────────────────────
+
+.agentic-ai__pipeline {
+  padding: 10px 14px;
+  background: @agentic-bg-card;
+  border: 1px solid @agentic-border;
+  border-radius: 8px;
+}
+
+.agentic-ai__pipeline-label {
+  display: block;
+  font-size: 9px;
+  color: @agentic-fg-dim;
+  letter-spacing: 0.1em;
+  margin-bottom: 6px;
+}
+
+.agentic-ai__pipeline-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+
+  &::-webkit-scrollbar { height: 3px; }
+  &::-webkit-scrollbar-thumb { background: @agentic-border; border-radius: 2px; }
+}
+
+.agentic-ai__pipeline-node {
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid @agentic-border;
+  font-size: 9px;
+  color: @agentic-fg-dim;
+  white-space: nowrap;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+
+  &.is-filled { border-color: fade(@agentic-muted, 40%); }
+
+  &--embed.is-filled  { color: @agentic-embed;   border-color: fade(@agentic-embed, 40%);   background: fade(@agentic-embed, 8%); }
+  &--llm.is-filled    { color: @agentic-llm;     border-color: fade(@agentic-llm, 40%);     background: fade(@agentic-llm, 8%); }
+  &--chunker.is-filled { color: @agentic-chunker; border-color: fade(@agentic-chunker, 40%); background: fade(@agentic-chunker, 8%); }
+  &--db.is-filled     { color: @agentic-db;       border-color: fade(@agentic-db, 40%);      background: fade(@agentic-db, 8%); }
+  &--muted.is-filled  { color: @agentic-fg-muted; border-color: fade(@agentic-muted, 40%);   background: fade(@agentic-muted, 8%); }
+
+  &.is-locked {
+    position: relative;
+    &::after {
+      content: '(locked)';
+      display: block;
+      font-size: 7px;
+      color: @agentic-fg-dim;
+      text-align: center;
+      margin-top: 1px;
+    }
+  }
+}
+
+.agentic-ai__pipeline-arrow {
+  color: @agentic-border;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+// ── Step Bar ────────────────────────────────────────────────
+
+.agentic-ai__step-bar {
+  display: flex;
+  align-items: center;
+}
+
+.agentic-ai__step {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 0;
+  color: @agentic-fg-dim;
+  transition: color 0.15s ease;
+
+  &:hover { color: @agentic-fg-muted; }
+
+  &.is-active {
+    color: @agentic-fg;
+    .agentic-ai__step-icon {
+      background: fade(@agentic-embed, 12%);
+      border-color: @agentic-embed;
+    }
+    .agentic-ai__step-label { font-weight: 600; }
+  }
+
+  &.is-past {
+    color: @agentic-embed;
+    .agentic-ai__step-icon {
+      background: fade(@agentic-embed, 6%);
+      border-color: fade(@agentic-embed, 50%);
+    }
+  }
+}
+
+.agentic-ai__step-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  background: @agentic-bg-card;
+  border: 1.5px solid @agentic-border;
+  transition: all 0.15s ease;
+}
+
+.agentic-ai__step-label {
+  font-size: 11px;
+  font-family: @agentic-font-mono;
+  letter-spacing: 0.04em;
+}
+
+.agentic-ai__step-line {
+  flex: 1;
+  height: 1px;
+  background: @agentic-border;
+  margin: 0 6px;
+  transition: background 0.2s ease;
+
+  &.is-past { background: fade(@agentic-embed, 40%); }
+}
+
+// ── Content Area ────────────────────────────────────────────
+
+.agentic-ai__content {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 2px;
+
+  &::-webkit-scrollbar { width: 4px; }
+  &::-webkit-scrollbar-thumb { background: @agentic-border; border-radius: 2px; }
+}
+
+.agentic-ai__step-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.agentic-ai__heading {
+  font-size: 16px;
+  font-weight: 700;
+  font-family: @agentic-font-sans;
+  color: @agentic-fg;
+  margin: 0;
+}
+
+.agentic-ai__subtitle {
+  font-size: 12px;
+  color: @agentic-muted;
+  line-height: 1.6;
+  margin: 0;
+}
+
+// ── Cards ───────────────────────────────────────────────────
+
+.agentic-ai__card {
+  background: @agentic-bg-card;
+  border: 1px solid @agentic-border;
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.agentic-ai__card--half {
+  flex: 1;
+  min-width: 0;
+}
+
+.agentic-ai__config-row {
+  display: flex;
+  gap: 10px;
+}
+
+.agentic-ai__card-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+
+  &--embed   { color: @agentic-embed; }
+  &--llm     { color: @agentic-llm; }
+  &--chunker { color: @agentic-chunker; }
+  &--db      { color: @agentic-db; }
+}
+
+.agentic-ai__card-subtitle {
+  font-size: 11px;
+  color: @agentic-muted;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+// ── Chip Groups ─────────────────────────────────────────────
+
+.agentic-ai__chip-group {
+  margin-bottom: 10px;
+}
+
+.agentic-ai__chip-group-label {
+  display: block;
+  font-size: 10px;
+  color: @agentic-fg-dim;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+}
+
+.agentic-ai__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.agentic-ai__chip {
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1.5px solid @agentic-border;
+  background: @agentic-bg-card;
+  color: @agentic-fg-muted;
+  font-size: 11px;
+  font-family: @agentic-font-mono;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  letter-spacing: 0.02em;
+
+  &:hover {
+    border-color: @agentic-fg-dim;
+  }
+
+  &--embed.is-selected   { border-color: @agentic-embed;   color: @agentic-embed;   background: fade(@agentic-embed, 8%); }
+  &--llm.is-selected     { border-color: @agentic-llm;     color: @agentic-llm;     background: fade(@agentic-llm, 8%); }
+  &--chunker.is-selected { border-color: @agentic-chunker; color: @agentic-chunker; background: fade(@agentic-chunker, 8%); }
+  &--db.is-selected      { border-color: @agentic-db;       color: @agentic-db;      background: fade(@agentic-db, 8%); }
+}
+
+// ── Locked Badges ───────────────────────────────────────────
+
+.agentic-ai__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.agentic-ai__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+
+  &--embed   { background: fade(@agentic-embed, 8%);   border: 1px solid fade(@agentic-embed, 20%);
+    .agentic-ai__badge-value { color: @agentic-embed; }
+  }
+  &--llm     { background: fade(@agentic-llm, 8%);     border: 1px solid fade(@agentic-llm, 20%);
+    .agentic-ai__badge-value { color: @agentic-llm; }
+  }
+  &--chunker { background: fade(@agentic-chunker, 8%); border: 1px solid fade(@agentic-chunker, 20%);
+    .agentic-ai__badge-value { color: @agentic-chunker; }
+  }
+  &--db      { background: fade(@agentic-db, 8%);       border: 1px solid fade(@agentic-db, 20%);
+    .agentic-ai__badge-value { color: @agentic-db; }
+  }
+}
+
+.agentic-ai__badge-label {
+  font-size: 10px;
+  color: @agentic-muted;
+  font-family: @agentic-font-mono;
+}
+
+.agentic-ai__badge-value {
+  font-weight: 600;
+  font-family: @agentic-font-mono;
+}
+
+.agentic-ai__badge-lock {
+  font-size: 9px;
+  opacity: 0.5;
+}
+
+// ── Project Path ────────────────────────────────────────────
+
+.agentic-ai__project-path {
+  padding: 10px 14px;
+  background: @agentic-bg-inset;
+  border: 1px dashed @agentic-border;
+  border-radius: 8px;
+  color: @agentic-fg-muted;
+  font-size: 11px;
+  font-family: @agentic-font-mono;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// ── Progress Bar ────────────────────────────────────────────
+
+.agentic-ai__progress {
+  margin: 4px 0;
+}
+
+.agentic-ai__progress-label {
+  display: block;
+  font-size: 10px;
+  color: @agentic-muted;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
+}
+
+.agentic-ai__progress-bar {
+  height: 4px;
+  background: @agentic-bg-card;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.agentic-ai__progress-fill {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, @agentic-chunker, @agentic-embed);
+  border-radius: 2px;
+  transition: width 0.1s linear;
+
+  &.is-complete {
+    background: @agentic-embed;
+  }
+}
+
+// ── Action Buttons ──────────────────────────────────────────
+
+.agentic-ai__button-row {
+  margin-top: 6px;
+}
+
+.agentic-ai__action-btn {
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  border: none;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: @agentic-font-mono;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &--index,
+  &--update {
+    background: linear-gradient(135deg, @agentic-chunker, @agentic-embed);
+    color: #0d0e12;
+  }
+
+  &--respond {
+    background: linear-gradient(135deg, @agentic-llm, @agentic-embed);
+    color: #0d0e12;
+  }
+
+  &.is-disabled,
+  &:disabled {
+    background: @agentic-bg-card;
+    color: @agentic-fg-dim;
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  &:hover:not(:disabled) {
+    filter: brightness(1.1);
+  }
+}
+
+// ── Query Input ─────────────────────────────────────────────
+
+.agentic-ai__input-wrap {
+  position: relative;
+}
+
+.agentic-ai__textarea {
+  width: 100%;
+  padding: 12px 14px;
+  padding-bottom: 42px;
+  background: @agentic-bg-inset;
+  border: 1.5px solid @agentic-border;
+  border-radius: 10px;
+  color: @agentic-fg;
+  font-size: 12px;
+  font-family: @agentic-font-mono;
+  resize: none;
+  outline: none;
+  line-height: 1.6;
+
+  &::placeholder { color: @agentic-fg-dim; }
+
+  &:focus {
+    border-color: fade(@agentic-embed, 50%);
+  }
+}
+
+.agentic-ai__search-btn {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  padding: 5px 14px;
+  border-radius: 6px;
+  border: none;
+  background: @agentic-embed;
+  color: #0d0e12;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: @agentic-font-mono;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+
+  &:hover { filter: brightness(1.1); }
+}
+
+// ── Search Results ──────────────────────────────────────────
+
+.agentic-ai__results {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.agentic-ai__results-count {
+  font-size: 10px;
+  color: @agentic-muted;
+  letter-spacing: 0.06em;
+  margin-bottom: 4px;
+}
+
+.agentic-ai__result {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  background: @agentic-bg-inset;
+  border: 1.5px solid @agentic-bg-card;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    border-color: @agentic-border;
+  }
+
+  &.is-selected {
+    background: fade(@agentic-embed, 3%);
+    border-color: fade(@agentic-embed, 25%);
+  }
+}
+
+.agentic-ai__result-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.agentic-ai__result-check {
+  font-size: 13px;
+  color: @agentic-embed;
+}
+
+.agentic-ai__result-file {
+  flex: 1;
+  font-size: 11px;
+  color: @agentic-fg-muted;
+  font-family: @agentic-font-mono;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agentic-ai__result-score {
+  font-size: 10px;
+  font-family: @agentic-font-mono;
+  padding: 2px 7px;
+  border-radius: 4px;
+
+  &--high { background: fade(@agentic-embed, 8%);   color: @agentic-embed; }
+  &--mid  { background: fade(@agentic-chunker, 8%); color: @agentic-chunker; }
+  &--low  { background: fade(#ff6b6b, 8%);           color: #ff6b6b; }
+}
+
+.agentic-ai__result-chunk {
+  font-size: 10px;
+  color: @agentic-fg-dim;
+  font-family: @agentic-font-mono;
+  line-height: 1.5;
+}
+
+// ── Response Area ───────────────────────────────────────────
+
+.agentic-ai__response {
+  padding: 16px;
+  background: @agentic-bg-inset;
+  border: 1px solid @agentic-border;
+  border-radius: 10px;
+  color: @agentic-fg-muted;
+  font-size: 12px;
+  font-family: @agentic-font-mono;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  min-height: 40px;
+
+  &:empty { display: none; }
+}
+
+// ── Inline Status Text ─────────────────────────────────────
+
+.agentic-ai__warn-text {
+  color: @agentic-chunker;
+}
+
+.agentic-ai__error-text {
+  color: #ff6b6b;
+  font-size: 11px;
+}
+
+.agentic-ai__waiting-label {
+  opacity: 0.6;
+  font-size: 11px;
+}
+
+.agentic-ai__cursor {
+  display: inline-block;
+  width: 6px;
+  height: 13px;
+  background: @agentic-embed;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: agentic-blink 0.8s infinite;
+}
+
+@keyframes agentic-blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0; }
+}
+
+// ── Navigation ──────────────────────────────────────────────
+
+.agentic-ai__nav {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 8px;
+  border-top: 1px solid @agentic-border;
+}
+
+.agentic-ai__nav-btn {
+  padding: 7px 18px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: @agentic-font-mono;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &--back {
+    border: 1px solid @agentic-border;
+    background: transparent;
+    color: @agentic-fg-muted;
+
+    &:disabled {
+      color: @agentic-border;
+      cursor: not-allowed;
+    }
+
+    &:hover:not(:disabled) {
+      border-color: @agentic-fg-dim;
+    }
+  }
+
+  &--next {
+    border: none;
+    background: @agentic-embed;
+    color: #0d0e12;
+    font-weight: 600;
+
+    &:disabled {
+      background: @agentic-border;
+      color: @agentic-fg-dim;
+      cursor: not-allowed;
+    }
+
+    &:hover:not(:disabled) {
+      filter: brightness(1.1);
+    }
+  }
+}
+
+// ── Config detail cards ─────────────────────────────────────
+.agentic-ai__detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 0;
+}
+
+.agentic-ai__detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
+
+.agentic-ai__detail-label {
+  color: @agentic-fg-muted;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+}
+
+.agentic-ai__detail-value {
+  color: @agentic-fg;
+  font-family: @agentic-font-mono;
+  font-size: 11px;
+
+  &--compact { font-size: 10px; }
+}
+
+.agentic-ai__detail-hint {
+  color: @agentic-fg-dim;
+  font-size: 10px;
+  font-style: italic;
+  margin-top: 8px;
+  opacity: 0.7;
+}
+
+// ── Refresh / fetch button ──────────────────────────────────
+.agentic-ai__refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  margin-top: 8px;
+  font-size: 11px;
+  color: @agentic-fg-dim;
+  background: transparent;
+  border: 1px solid @agentic-border;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+
+  &:hover {
+    color: @agentic-fg-muted;
+    border-color: @agentic-fg-dim;
+  }
+}
+
+// ── Provider Tabs ───────────────────────────────────────────
+.agentic-ai__provider-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 12px;
+  border-bottom: 1px solid @agentic-border;
+}
+
+.agentic-ai__provider-tab {
+  padding: 7px 16px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: @agentic-fg-dim;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: @agentic-font-mono;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+
+  &:hover {
+    color: @agentic-fg-muted;
+  }
+
+  &.is-active {
+    color: @agentic-fg;
+  }
+
+  &--embed.is-active {
+    border-bottom-color: @agentic-embed;
+    color: @agentic-embed;
+  }
+
+  &--llm.is-active {
+    border-bottom-color: @agentic-llm;
+    color: @agentic-llm;
+  }
+}
+
+// ── Model Info (inline tags below selected model) ───────────
+.agentic-ai__model-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed @agentic-border;
+}
+
+.agentic-ai__model-info-tag {
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: @agentic-bg-inset;
+  border: 1px solid @agentic-border;
+  font-size: 10px;
+  font-family: @agentic-font-mono;
+  color: @agentic-fg-muted;
+  letter-spacing: 0.02em;
+}
+
+// ── Container queries (Electron 30 / Chromium 124+) ─────────
+// Adapt layout when docked in narrow side panel vs wide bottom panel
+
+@container agentic-panel (max-width: 320px) {
+  .agentic-ai__config-row {
+    flex-direction: column;
+  }
+
+  .agentic-ai__step-label {
+    display: none;
+  }
+
+  .agentic-ai__pipeline-row {
+    font-size: 8px;
+  }
+}
+
+@container agentic-panel (min-width: 600px) {
+  .agentic-ai__step-content {
+    max-width: 560px;
+  }
+}

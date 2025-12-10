@@ -1,0 +1,152 @@
+classDiagram
+    class Indexer {
+        -#chunker: Chunker
+        -#embedder: Embedder
+        -#modelName: string
+        -#projectName: string
+        -#provider: string
+        -#dimensions: number
+        +create(config)$ Promise~Indexer~
+        +index(options) Promise~IndexResult~
+        +chunkFile(file, projectPath)
+        +findFiles(rootPath, opts)
+        +generateEmbeddings(texts, cb)
+        +writeToCache(validChunks, cacheDir)
+        +dispose()
+    }
+
+    class VectorStore {
+        -#client: ChromaClient
+        -#collection: Collection
+        -#config: Object
+        -#dimensions: number
+        -#embedder: Embedder
+        +connect(config)$ Promise~VectorStore~
+        +ingest(indexResult) Promise~IngestResult~
+        +search(query, options) Promise~SearchResult~
+        +loadEmbeddings(embedFile)
+        +loadEmbedder(opts, EmbedderClass)
+        +dispose()
+        +findExactMatches(query, fetchAll, filters)
+        +semanticSearch(query, filters)
+        +keywordSearch(query, fetchAll, filters)
+        +fuseResults(exact, semantic, keyword, weights, topK, min)
+        +addResults(results, weight, source, fused)$
+        +getRanked(fused, topK, keywordMin, minSimilarity)$
+        +matchesFilters(metadata, filters)$
+        +tokeniseQuery(query)$
+    }
+
+    class Chunker {
+        <<abstract>>
+        +parseCodeFile(file, content)*
+        +getLanguageFromPath(filePath)*
+    }
+
+    class Treesitter {
+        +parseCodeFile(file, content)
+        +getLanguageFromPath(filePath)
+    }
+
+    class Embedder {
+        <<abstract>>
+        +concurrency: number
+        +initialize()*
+        +embed(text)*
+        +getDimensions()*
+        +cleanup()
+    }
+
+    class Ollama {
+        +initialize()
+        +embed(text)
+        +getDimensions()
+    }
+
+    class Transformers {
+        +initialize()
+        +embed(text)
+        +getDimensions()
+        +cleanup()
+    }
+
+    class EventEmitter {
+        <<node:events>>
+        +on(event, handler)
+        +emit(event, payload)
+        +removeListener(event, handler)
+        +removeAllListeners()
+    }
+
+    class ContextManager {
+        -indexer: Indexer
+        -store: VectorStore
+        -lastIndexResult: IndexResult
+        -cacheDir: string
+        +createIndexer(provider, model) Promise~Indexer~
+        +indexCurrentProject(options) Promise~IndexResult~
+        +ensureStore(opts) Promise~VectorStore~
+        +ingestToStore(indexResult) Promise~IngestResult~
+        +getContext(query, options) Promise~SearchResult~
+        +hasCachedEmbeddings() boolean
+        +destroy()
+    }
+
+    class AgenticAiView {
+        -contextManager: ContextManager
+        -currentStep: string
+        -selections: Object
+        +serialize()
+        +destroy()
+        +getSelectedContext()
+        +buildContextString()
+        +advanceToStep(stepId)
+    }
+
+    class ConfigManager {
+        +get(keyPath)$
+        +set(keyPath, value)$
+        +listEnabledProviders()$
+        +listModels(providerId, type)$
+        +getModelConfig(providerId, modelName)$
+        +getEmbedConfig(provider, model)$
+        +getProviderConnection(providerId)$
+        +classifyOllamaModels(names)$
+    }
+
+    class OllamaClient {
+        +setModel(model)
+        +sendPrompt(prompt) Promise~string~
+    }
+
+    EventEmitter <|-- Indexer
+    EventEmitter <|-- VectorStore
+    Chunker <|-- Treesitter
+    Embedder <|-- Ollama
+    Embedder <|-- Transformers
+
+    Indexer --> Chunker : loads via factory
+    Indexer --> Embedder : loads via factory
+    VectorStore --> Embedder : loads for query embedding
+    VectorStore --> ChromaClient : uses
+
+    ContextManager --> Indexer : creates & owns
+    ContextManager --> VectorStore : creates & owns
+    AgenticAiView --> ContextManager : delegates operations
+    AgenticAiView --> OllamaClient : LLM generation
+    AgenticAiView --> ConfigManager : reads config
+    ContextManager --> ConfigManager : reads config
+
+    class ChromaClient {
+        +getCollection(opts)
+        +createCollection(opts)
+    }
+
+    class Collection {
+        +add(data)
+        +get(opts)
+        +query(opts)
+        +count()
+    }
+
+    ChromaClient --> Collection : returns

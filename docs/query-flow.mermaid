@@ -1,0 +1,59 @@
+sequenceDiagram
+    participant User as AgenticAiView (Query Step)
+    participant CM as ContextManager
+    participant Store as VectorStore
+    participant Emb as Embedder (query)
+    participant Coll as ChromaDB Collection
+    participant Fuse as Fusion Engine
+
+    User->>CM: getContext(query, { currentFile })
+    CM->>Store: search(query, { topK, filters })
+
+    Store->>Store: emit('progress', { phase: 'search', status: 'start' })
+
+    Note over Store,Coll: Three strategies run in parallel
+
+    par Exact Match
+        Store->>Coll: collection.get({ limit: 1000 })
+        Coll-->>Store: All documents + metadata
+        Store->>Store: findExactMatches(query, items, filters)
+        Note over Store: Match against functionName,<br/>className, methodName,<br/>variableName, exact phrase
+    and Semantic Search
+        Store->>Emb: embed(query)
+        Emb-->>Store: Query vector
+        Store->>Coll: collection.query({ queryEmbeddings, nResults })
+        Coll-->>Store: Nearest neighbours + distances
+        Store->>Store: semanticSearch → score = 1 - distance
+    and Keyword Search
+        Store->>Store: tokeniseQuery(query) → keywords
+        Store->>Store: keywordSearch(keywords, items, filters)
+        Note over Store: Token matching with<br/>length bonus scoring
+    end
+
+    Store->>Store: emit('progress', { phase: 'search', status: 'progress' })
+
+    Store->>Fuse: fuseResults(exact, semantic, keyword, weights)
+    Note over Fuse: Weights: exact 0.4, semantic 0.4, keyword 0.2
+    Fuse->>Fuse: Deduplicate by source_file + startRow + endRow
+    Fuse->>Fuse: Sum weighted scores per chunk
+    Fuse->>Fuse: getRanked(fused, topK, minSimilarity)
+    Note over Fuse: Survive if fusedScore ≥ min<br/>OR bestRawScore ≥ min<br/>Classes surface first
+    Fuse-->>Store: Ranked results
+
+    Store->>Store: Build SearchResult { results, groupedByFile, searchStats }
+    Store->>Store: emit('progress', { phase: 'search', status: 'complete' })
+
+    Store-->>CM: SearchResult
+    CM-->>User: SearchResult
+
+    Note over User: User reviews & selects context chunks
+
+    participant Respond as AgenticAiView (Respond Step)
+    participant LLM as OllamaClient
+
+    User->>Respond: Navigate to Respond step
+    Respond->>Respond: buildContextString() from selected chunks
+    Respond->>Respond: _buildFullPrompt() = context + query
+    Respond->>LLM: sendPrompt(fullPrompt)
+    LLM-->>Respond: LLM response text
+    Respond->>Respond: Typewriter render response

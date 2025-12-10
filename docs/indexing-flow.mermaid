@@ -1,0 +1,68 @@
+sequenceDiagram
+    participant View as AgenticAiView
+    participant CM as ContextManager
+    participant Idx as Indexer
+    participant Chk as Treesitter Chunker
+    participant Emb as Embedder (Ollama/Transformers)
+    participant FS as FileSystem
+    participant Cache as Disk Cache
+
+    Note over View,Cache: PHASE 1: CREATE INDEXER
+    View->>CM: createIndexer(provider, model)
+    CM->>Idx: Indexer.create({ provider, model })
+    Idx->>Emb: loadEmbedder(opts)
+    Emb->>Emb: initialize() + getDimensions()
+    Emb-->>Idx: Embedder ready
+    Idx->>Chk: loadChunker(opts)
+    Chk-->>Idx: Chunker ready
+    Idx-->>CM: Indexer instance (EventEmitter)
+    CM-->>View: indexer reference
+
+    View->>Idx: on('progress', handler)
+    View->>Idx: on('error', handler)
+
+    Note over View,Cache: PHASE 2: INDEX PROJECT
+    View->>CM: indexCurrentProject({ force, provider, model })
+    CM->>Idx: index({ projectPath, cacheDir, include, exclude })
+
+    Note over Idx: Phase: scan
+    Idx->>Idx: emit('progress', { phase: 'scan', status: 'start' })
+    Idx->>FS: fast-glob(include, { ignore: exclude })
+    FS-->>Idx: Array of file paths
+    Idx->>Idx: emit('progress', { phase: 'scan', status: 'complete' })
+
+    Note over Idx: Phase: chunk
+    Idx->>Idx: emit('progress', { phase: 'chunk', status: 'start' })
+    loop For each file
+        Idx->>FS: readFile(filePath, 'utf-8')
+        FS-->>Idx: File content
+        Idx->>Chk: parseCodeFile(file, content)
+        Chk->>Chk: AST parse → extract functions/classes/methods
+        Chk-->>Idx: Code chunks with metadata
+        Idx->>Idx: emit('progress', { phase: 'chunk', status: 'progress' })
+    end
+    Idx->>Idx: emit('progress', { phase: 'chunk', status: 'complete' })
+
+    Note over Idx: Phase: embed
+    Idx->>Idx: emit('progress', { phase: 'embed', status: 'start' })
+    Idx->>Emb: generateEmbeddings(texts) [concurrency: 5]
+    loop Worker pool (5 concurrent)
+        Emb->>Emb: embed(text)
+        Emb-->>Idx: Vector embedding
+        Idx->>Idx: emit('progress', { phase: 'embed', status: 'progress' })
+    end
+    Idx->>Idx: Filter failed embeddings (skip, don't zero-fill)
+    Idx->>Idx: emit('progress', { phase: 'embed', status: 'complete' })
+
+    Note over Idx: Phase: cache
+    Idx->>Idx: emit('progress', { phase: 'cache', status: 'start' })
+    Idx->>Cache: writeToCache → embeddings_<projectName>.json
+    Cache-->>Idx: File saved
+    Idx->>Idx: emit('progress', { phase: 'cache', status: 'complete' })
+
+    Note over Idx: Done
+    Idx->>Idx: emit('done', IndexResult)
+    Idx-->>CM: IndexResult { embedFile, dimensions, model, timestamp }
+    CM-->>View: Indexing complete
+    View->>Idx: removeListener('progress')
+    View->>Idx: removeListener('error')

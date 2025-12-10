@@ -1,0 +1,7 @@
+.DS_Store
+npm-debug.log
+node_modules
+embeddings_cache/*.json
+!embeddings_cache/.gitkeep
+coverage/
+.nyc_output/

@@ -1,0 +1,53 @@
+sequenceDiagram
+    participant View as AgenticAiView
+    participant CM as ContextManager
+    participant Store as VectorStore
+    participant FS as FileSystem
+    participant Client as ChromaClient
+    participant Coll as Collection
+
+    Note over View,Coll: CONNECT TO STORE
+    View->>CM: handleUpdateDatabase()
+    CM->>CM: ensureStore({ dimensions })
+    Note over CM: Dimensions resolved via:<br/>1. lastIndexResult<br/>2. Cached embeddings JSON<br/>3. Explicit parameter
+
+    CM->>Store: VectorStore.connect({ url, collection, batchSize, dimensions })
+    Store->>Client: getCollection({ name })
+    alt Collection exists
+        Client-->>Store: Existing collection
+    else Collection not found (ChromaNotFoundError)
+        Store->>Client: createCollection({ name, dimensions })
+        Client-->>Store: New collection
+    end
+    Store->>Store: loadEmbedder(embedOptions)
+    Store-->>CM: VectorStore instance
+
+    View->>Store: on('progress', handler)
+
+    Note over View,Coll: INGEST EMBEDDINGS
+    CM->>Store: ingest({ embedFile, dimensions })
+
+    Store->>Store: Validate required fields (embedFile, dimensions)
+    Store->>FS: loadEmbeddings(embedFile)
+    FS-->>Store: JSON { chunks[], model, dimensions }
+    Store->>Store: Filter chunks (text.length > 50)
+    Store->>Store: Prepare arrays: ids, embeddings, documents, metadatas
+
+    Store->>Store: emit('start', { phase: 'ingest', total: N })
+
+    loop For each batch (default 200 items)
+        Store->>Coll: collection.add({ ids, embeddings, documents, metadatas })
+        alt Success
+            Coll-->>Store: Batch confirmed
+            Store->>Store: emit('progress', { phase: 'ingest', current, total, rate })
+        else Batch fails
+            Store->>Store: Halve batch size (200 → 100 → 50)
+            Store->>Store: emit('error', { recoverable: true, message })
+            Store->>Coll: Retry with smaller batch
+        end
+    end
+
+    Store->>Store: emit('complete', { phase: 'ingest' })
+    Store-->>CM: IngestResult { collection, inserted, rate, totalTime }
+    CM-->>View: Update complete
+    View->>Store: removeListener('progress')

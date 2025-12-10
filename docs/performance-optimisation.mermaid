@@ -1,0 +1,34 @@
+flowchart LR
+    subgraph "Indexing Optimisations"
+        A1[fast-glob<br/>Configurable include/exclude] --> A2[Treesitter AST Parsing<br/>Language-aware chunking]
+        A2 --> A3[Concurrent Embedding<br/>Worker pool: 5 parallel]
+        A3 --> A4[JSON Disk Cache<br/>Skip re-index on cache hit]
+    end
+
+    subgraph "Ingest Optimisations"
+        B1[Batched Insert<br/>Default: 200 per batch] --> B2[Adaptive Batch Sizing<br/>Halve on failure: 200→100→50]
+        B2 --> B3[Separate Index + Ingest<br/>Cache once, ingest many times]
+    end
+
+    subgraph "Search Optimisations"
+        C1[Shared collection.get<br/>Single fetch for exact + keyword] --> C2[Parallel Strategies<br/>Promise.all: exact, semantic, keyword]
+        C2 --> C3[Weighted Fusion<br/>exact 0.4, semantic 0.4, keyword 0.2]
+        C3 --> C4[Dual Threshold<br/>fusedScore OR bestRawScore ≥ min]
+    end
+
+    subgraph "Provider Flexibility"
+        D1[Ollama<br/>Local API, any model] --- D2[Transformers<br/>In-process, no server needed]
+        D1 --> D3[Dimensions per model<br/>Dynamic, not hardcoded]
+        D2 --> D3
+    end
+
+    subgraph "Plugin-side"
+        E1[EventEmitter Progress<br/>Detach on destroy or completion] --> E2[Cached Embeddings Check<br/>hasCachedEmbeddings before index]
+        E2 --> E3[Dimension Fallback Chain<br/>Memory → Cache file → Explicit param]
+    end
+
+    style A3 fill:#9fc,stroke:#333,color:#333
+    style B2 fill:#fc9,stroke:#333,color:#333
+    style C2 fill:#9cf,stroke:#333,color:#333
+    style D3 fill:#ccf,stroke:#333,color:#333
+    style E3 fill:#ffc,stroke:#333,color:#333

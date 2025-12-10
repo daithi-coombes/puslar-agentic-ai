@@ -1,0 +1,49 @@
+sequenceDiagram
+    participant CLI as CLI / ContextManager
+    participant Idx as Indexer
+    participant Chk as Treesitter
+    participant Emb as Embedder (Ollama / Transformers)
+    participant FS as FileSystem
+    participant Cache as Embeddings Cache
+
+    CLI->>Idx: Indexer.create({ provider, model, chunker })
+    Idx->>Emb: loadEmbedder({ concurrency: 5 })
+    Emb->>Emb: initialize() → load model
+    Emb->>Emb: getDimensions() → N dimensions
+    Emb-->>Idx: Embedder ready
+    Idx->>Chk: loadChunker()
+    Chk-->>Idx: Chunker ready
+
+    CLI->>Idx: index({ projectPath, cacheDir, include, exclude })
+
+    Idx->>FS: fast-glob(include, { ignore: exclude })
+    FS-->>Idx: Array of file paths
+
+    loop For each file
+        Idx->>FS: readFile(filePath, 'utf-8')
+        FS-->>Idx: File content
+
+        Idx->>Chk: parseCodeFile(file, content)
+        Chk->>Chk: Tree-sitter AST parse
+        Chk->>Chk: Extract functions, classes, methods, variables
+        Chk-->>Idx: Chunks with metadata (type, startRow, endRow, names)
+    end
+
+    Note over Idx,Emb: Concurrent embedding (5 workers)
+    Idx->>Idx: generateEmbeddings(allChunkTexts, progressCallback)
+
+    par Worker pool
+        loop Queue of chunks
+            Emb->>Emb: embed(text) → vector
+            Emb-->>Idx: Embedding vector (or failure)
+        end
+    end
+
+    Idx->>Idx: Filter out failed embeddings (preserve alignment)
+
+    Idx->>Cache: writeToCache → embeddings_<projectName>.json
+    Note over Cache: Format: { chunks[], model, dimensions, total, timestamp }
+    Cache-->>Idx: File saved
+
+    Idx->>Idx: emit('done', IndexResult)
+    Idx-->>CLI: IndexResult { embedFile, dimensions, model, timestamp }

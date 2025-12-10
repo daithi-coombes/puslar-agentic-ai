@@ -1,0 +1,24 @@
+# docker-compose-simple.yml
+# version: '3.8'
+
+services:
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: chroma-local
+    ports:
+      - "8000:8000"
+    volumes:
+      - chroma_data:/chroma/chroma  # For persistence
+      # Optional: Mount local config
+      # - ./chroma-config.yaml:/chroma/chroma/config.yaml
+    environment:
+      - IS_PERSISTENT=TRUE           # Keep data between restarts
+      - ANONYMIZED_TELEMETRY=FALSE   # Disable telemetry
+      - CHROMA_SERVER_HOST=0.0.0.0
+      - CHROMA_SERVER_HTTP_PORT=8000
+      # Enable if you need CORS (for web frontends)
+      # - CHROMA_SERVER_CORS_ALLOW_ORIGINS=["http://localhost:3000"]
+    restart: unless-stopped
+
+volumes:
+  chroma_data:
